@@ -5,21 +5,23 @@ This derived from Debian's CA Certificates."
 HOMEPAGE = "http://packages.debian.org/sid/ca-certificates"
 SECTION = "misc"
 LICENSE = "GPL-2.0+ & MPL-2.0"
-LIC_FILES_CHKSUM = "file://debian/copyright;md5=48d2baf97986999e776b43c8dd9e0c5a"
+LIC_FILES_CHKSUM = "file://debian/copyright;md5=aeb420429b1659507e0a5a1b123e8308"
 
 # This is needed to ensure we can run the postinst at image creation time
 DEPENDS = "ca-certificates-native"
 DEPENDS_class-native = ""
 
-# tag: debian/20150426 + 2
-SRCREV = "d4790d2832aaac9152f450e06661511067592227"
+SRCREV = "c28799b138b044c963d24c4a69659b6e5486e3be"
 
-SRC_URI = "git://anonscm.debian.org/collab-maint/ca-certificates.git \
-           file://0001-update-ca-certificates-remove-c-rehash.patch \
+SRC_URI = "git://salsa.debian.org/debian/ca-certificates.git;protocol=https \
            file://0002-update-ca-certificates-use-SYSROOT.patch \
            file://0001-update-ca-certificates-don-t-use-Debianisms-in-run-p.patch \
+           file://update-ca-certificates-support-Toybox.patch \
            file://default-sysroot.patch \
-           file://sbindir.patch"
+           file://sbindir.patch \
+           file://0003-update-ca-certificates-use-relative-symlinks-from-ET.patch \
+           file://0001-certdata2pem.py-use-python3.patch \
+           "
 
 S = "${WORKDIR}/git"
 
@@ -49,7 +51,7 @@ do_install () {
         echo "# Lines starting with ! will remove certificate on next update"
         echo "#"
         find ${D}${datadir}/ca-certificates -type f -name '*.crt' | \
-            sed 's,^${D}${datadir}/ca-certificates/,,'
+            sed 's,^${D}${datadir}/ca-certificates/,,' | sort
     } >${D}${sysconfdir}/ca-certificates.conf
 }
 
@@ -67,10 +69,11 @@ pkg_postinst_${PN} () {
 
 CONFFILES_${PN} += "${sysconfdir}/ca-certificates.conf"
 
-# Postinsts don't seem to be run for nativesdk packages when populating SDKs.
+# Rather than make a postinst script that works for both target and nativesdk,
+# we just run update-ca-certificate from do_install() for nativesdk.
 CONFFILES_${PN}_append_class-nativesdk = " ${sysconfdir}/ssl/certs/ca-certificates.crt"
 do_install_append_class-nativesdk () {
-    SYSROOT="${D}${SDKPATHNATIVE}" update-ca-certificates
+    SYSROOT="${D}${SDKPATHNATIVE}" ${D}${sbindir}/update-ca-certificates
 }
 
 do_install_append_class-native () {
